@@ -101,7 +101,9 @@ export function NodeLibrary() {
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     generator: true,
     modifier: true,
+    select: true,
     value: true,
+    data: true,
     output: true,
   });
 
@@ -114,7 +116,9 @@ export function NodeLibrary() {
 
   const generators = nodeDefinitions.getGenerators();
   const modifiers = nodeDefinitions.getModifiers();
+  const selectNodes = nodeDefinitions.getSelectNodes();
   const valueNodes = nodeDefinitions.getValueNodes();
+  const dataNodes = nodeDefinitions.getDataNodes();
   const outputNodes = nodeDefinitions.getOutputNodes();
 
   // Filter nodes based on search
@@ -130,7 +134,9 @@ export function NodeLibrary() {
 
   const filteredGenerators = filterNodes(generators);
   const filteredModifiers = filterNodes(modifiers);
+  const filteredSelect = filterNodes(selectNodes);
   const filteredValues = filterNodes(valueNodes);
+  const filteredData = filterNodes(dataNodes);
   const filteredOutputs = filterNodes(outputNodes);
 
   return (
@@ -189,6 +195,16 @@ export function NodeLibrary() {
           />
         )}
 
+        {filteredSelect.length > 0 && (
+          <CategorySection
+            title="Select"
+            nodes={filteredSelect}
+            isOpen={openCategories.select}
+            onToggle={() => toggleCategory('select')}
+            color={categoryColors.select}
+          />
+        )}
+
         {filteredValues.length > 0 && (
           <CategorySection
             title="Values"
@@ -196,6 +212,16 @@ export function NodeLibrary() {
             isOpen={openCategories.value}
             onToggle={() => toggleCategory('value')}
             color={categoryColors.value}
+          />
+        )}
+
+        {filteredData.length > 0 && (
+          <CategorySection
+            title="Data"
+            nodes={filteredData}
+            isOpen={openCategories.data}
+            onToggle={() => toggleCategory('data')}
+            color={categoryColors.data}
           />
         )}
 

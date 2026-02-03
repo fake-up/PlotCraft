@@ -3,7 +3,7 @@ import type { CanvasSettings, OutputLayer } from '../types';
 import { randomSeed } from '../engine/rng';
 
 // Data types for node connections
-export type DataType = 'paths' | 'number' | 'vector' | 'boolean';
+export type DataType = 'paths' | 'number' | 'vector' | 'boolean' | 'numberArray';
 
 export interface Vector2 {
   x: number;
@@ -19,7 +19,7 @@ export interface Port {
 
 export interface NodeDefinition {
   type: string;
-  category: 'generator' | 'modifier' | 'value' | 'output';
+  category: 'generator' | 'modifier' | 'select' | 'value' | 'data' | 'output';
   name: string;
   description?: string;
   inputs: Omit<Port, 'id' | 'direction'>[];
@@ -29,7 +29,7 @@ export interface NodeDefinition {
 
 export interface ParameterDefinition {
   name: string;
-  type: 'number' | 'select' | 'boolean' | 'vector';
+  type: 'number' | 'select' | 'boolean' | 'vector' | 'button';
   label: string;
   default: unknown;
   min?: number;

@@ -1,6 +1,16 @@
-import type { ModuleDefinition, Point, CanvasSettings } from '../../types';
+import type { ModuleDefinition, Point, Path, CanvasSettings } from '../../types';
 import { FALLOFF_PARAMETERS, getFalloffParams, calculateFalloff, lerpWithFalloff } from '../../engine/falloff';
 import type { FalloffParams } from '../../engine/falloff';
+
+// Calculate centroid of a path
+function getPathCentroid(path: Path): Point {
+  if (path.points.length === 0) return { x: 0, y: 0 };
+  const sum = path.points.reduce(
+    (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
+    { x: 0, y: 0 }
+  );
+  return { x: sum.x / path.points.length, y: sum.y / path.points.length };
+}
 
 export const twistModifier: ModuleDefinition = {
   id: 'twist',
@@ -82,6 +92,15 @@ export const twistModifier: ModuleDefinition = {
       step: 1,
       showWhen: { param: 'includeRadialWave', value: true },
     },
+    transformMode: {
+      type: 'select',
+      label: 'Transform Mode',
+      default: 'deform',
+      options: [
+        { value: 'deform', label: 'Deform' },
+        { value: 'translate', label: 'Translate' },
+      ],
+    },
     ...FALLOFF_PARAMETERS,
   },
   execute: (params, input, ctx) => {
@@ -94,6 +113,7 @@ export const twistModifier: ModuleDefinition = {
     const includeRadialWave = params.includeRadialWave === true;
     const waveFrequency = (params.waveFrequency as number) ?? 6;
     const waveAmplitude = (params.waveAmplitude as number) ?? 10;
+    const transformMode = (params.transformMode as string) ?? 'deform';
     const falloff = getFalloffParams(params);
 
     const { width, height } = ctx.canvas;
@@ -105,26 +125,45 @@ export const twistModifier: ModuleDefinition = {
     // Convert twist amount to radians
     const twistRadians = (twistAmount * Math.PI) / 180;
 
+    const twistOpts: TwistOptions = {
+      centerX,
+      centerY,
+      twistRadians,
+      twistProfile,
+      innerRadius,
+      outerRadius,
+      includeRadialWave,
+      waveFrequency,
+      waveAmplitude,
+      falloff,
+      canvas: ctx.canvas,
+    };
+
     return input.map(layer => ({
       ...layer,
-      paths: layer.paths.map(path => ({
-        ...path,
-        points: path.points.map(p =>
-          twistPoint(p, {
-            centerX,
-            centerY,
-            twistRadians,
-            twistProfile,
-            innerRadius,
-            outerRadius,
-            includeRadialWave,
-            waveFrequency,
-            waveAmplitude,
-            falloff,
-            canvas: ctx.canvas,
-          })
-        ),
-      })),
+      paths: layer.paths.map(path => {
+        if (transformMode === 'translate') {
+          // Calculate displacement at path centroid, apply to all points
+          const centroid = getPathCentroid(path);
+          const twistedCentroid = twistPoint(centroid, twistOpts);
+          const offsetX = twistedCentroid.x - centroid.x;
+          const offsetY = twistedCentroid.y - centroid.y;
+
+          return {
+            ...path,
+            points: path.points.map(p => ({
+              x: p.x + offsetX,
+              y: p.y + offsetY,
+            })),
+          };
+        } else {
+          // Deform mode: twist each point individually
+          return {
+            ...path,
+            points: path.points.map(p => twistPoint(p, twistOpts)),
+          };
+        }
+      }),
     }));
   },
 };

@@ -16,6 +16,7 @@ import { scatterPointsGenerator } from './generators/scatterPoints';
 import { arcGenerator } from './generators/arc';
 import { horizontalLinesGenerator } from './generators/horizontalLines';
 import { particleSprayGenerator } from './generators/particleSpray';
+import { truchetTilesGenerator } from './generators/truchetTiles';
 
 // Modifiers
 import { noiseDisplaceModifier } from './modifiers/noiseDisplace';
@@ -75,6 +76,7 @@ moduleRegistry.register(contoursGenerator);
 moduleRegistry.register(scatterPointsGenerator);
 moduleRegistry.register(arcGenerator);
 moduleRegistry.register(particleSprayGenerator);
+moduleRegistry.register(truchetTilesGenerator);
 
 // Register all modifiers
 moduleRegistry.register(noiseDisplaceModifier);

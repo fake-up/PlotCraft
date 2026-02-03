@@ -530,6 +530,19 @@ export function PropertiesPanel() {
             </div>
           );
 
+        case 'button':
+          return (
+            <div key={param.name}>
+              <button
+                type="button"
+                onClick={() => handleParamChange(param.name, (Number(value) || 0) + 1)}
+                className="w-full px-3 py-1.5 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              >
+                {param.label}
+              </button>
+            </div>
+          );
+
         default:
           return null;
       }

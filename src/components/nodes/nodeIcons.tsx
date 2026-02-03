@@ -176,6 +176,16 @@ export const ParticleSprayIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Truchet Tiles - interlocking arcs
+export const TruchetTilesIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2 2 Q2 8, 8 8" />
+    <path d="M8 2 Q8 8, 14 8" />
+    <path d="M2 8 Q2 14, 8 14" />
+    <path d="M8 8 Q14 8, 14 14" />
+  </Icon>
+);
+
 // ============ MODIFIERS ============
 
 // Noise Displace - squiggle
@@ -366,11 +376,121 @@ export const VectorIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Map Range - input/output range arrows
+export const MapRangeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <line x1="2" y1="8" x2="14" y2="8" />
+    <polyline points="11 5, 14 8, 11 11" />
+    <line x1="5" y1="4" x2="5" y2="12" />
+    <line x1="11" y1="4" x2="11" y2="12" />
+  </Icon>
+);
+
 // Boolean - toggle switch
 export const BooleanIcon = (props: IconProps) => (
   <Icon {...props}>
     <rect x="2" y="5" width="12" height="6" rx="3" />
     <circle cx="11" cy="8" r="2" fill="currentColor" />
+  </Icon>
+);
+
+// ============ DATA ============
+
+// Bitcoin Data - Bitcoin symbol
+export const BitcoinDataIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <line x1="6" y1="2" x2="6" y2="4" />
+    <line x1="10" y1="2" x2="10" y2="4" />
+    <line x1="6" y1="12" x2="6" y2="14" />
+    <line x1="10" y1="12" x2="10" y2="14" />
+    <path d="M4 4 L9 4 Q12 4, 12 6 Q12 8, 9 8 L4 8 Z" />
+    <path d="M4 8 L10 8 Q13 8, 13 10 Q13 12, 10 12 L4 12 Z" />
+  </Icon>
+);
+
+// Weather Data - sun with cloud
+export const WeatherDataIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="7" cy="7" r="3" />
+    <line x1="7" y1="1" x2="7" y2="3" />
+    <line x1="7" y1="11" x2="7" y2="13" />
+    <line x1="1" y1="7" x2="3" y2="7" />
+    <line x1="11" y1="7" x2="13" y2="7" />
+    <line x1="3" y1="3" x2="4.5" y2="4.5" />
+    <line x1="9.5" y1="9.5" x2="11" y2="11" />
+    <line x1="11" y1="3" x2="9.5" y2="4.5" />
+    <path d="M9 11 Q9 9, 11 9 Q14 9, 14 11 Q14 13, 11 13 L6 13 Q4 13, 4 11 Q4 10, 5 10" />
+  </Icon>
+);
+
+// Earthquake Data - seismograph wave
+export const EarthquakeDataIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <polyline points="1 8, 4 8, 5 5, 6 11, 7 3, 8 13, 9 5, 10 11, 11 8, 15 8" />
+  </Icon>
+);
+
+// Data Points - chart/graph
+export const DataPointsIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <polyline points="2 13, 5 7, 8 10, 11 4, 14 6" />
+    <circle cx="2" cy="13" r="1" fill="currentColor" stroke="none" />
+    <circle cx="5" cy="7" r="1" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="10" r="1" fill="currentColor" stroke="none" />
+    <circle cx="11" cy="4" r="1" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="6" r="1" fill="currentColor" stroke="none" />
+  </Icon>
+);
+
+// ============ SELECT ============
+
+// Random Select - split/filter icon with some dots highlighted
+export const RandomSelectIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="4" cy="4" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="4" cy="8" r="1.5" />
+    <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" />
+    <line x1="7" y1="4" x2="10" y2="4" />
+    <line x1="7" y1="8" x2="10" y2="10" />
+    <line x1="7" y1="12" x2="10" y2="6" />
+    <line x1="10" y1="3" x2="14" y2="3" />
+    <line x1="10" y1="6" x2="14" y2="6" />
+    <line x1="10" y1="10" x2="14" y2="10" />
+    <line x1="10" y1="13" x2="14" y2="13" />
+  </Icon>
+);
+
+// Index Select - numbered list with highlight
+export const IndexSelectIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <text x="2" y="6" fontSize="5" fill="currentColor" stroke="none" fontFamily="monospace">1</text>
+    <line x1="7" y1="4" x2="14" y2="4" strokeWidth="2" />
+    <text x="2" y="10.5" fontSize="5" fill="currentColor" stroke="none" fontFamily="monospace">2</text>
+    <line x1="7" y1="8.5" x2="14" y2="8.5" opacity="0.3" />
+    <text x="2" y="15" fontSize="5" fill="currentColor" stroke="none" fontFamily="monospace">3</text>
+    <line x1="7" y1="13" x2="14" y2="13" strokeWidth="2" />
+  </Icon>
+);
+
+// Region Select - dotted circle with selection indicator
+export const RegionSelectIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="8" cy="8" r="6" strokeDasharray="2 2" />
+    <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
+    <line x1="8" y1="2" x2="8" y2="4" />
+    <line x1="8" y1="12" x2="8" y2="14" />
+    <line x1="2" y1="8" x2="4" y2="8" />
+    <line x1="12" y1="8" x2="14" y2="8" />
+  </Icon>
+);
+
+// Noise Select - organic wavy blob
+export const NoiseSelectIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M8 2 Q12 3, 13 6 Q14 9, 12 11 Q10 14, 7 13 Q3 12, 3 9 Q2 5, 5 3 Q7 1, 8 2 Z" strokeDasharray="2 2" />
+    <circle cx="6" cy="6" r="1" fill="currentColor" stroke="none" />
+    <circle cx="10" cy="8" r="1" fill="currentColor" stroke="none" />
+    <circle cx="7" cy="10" r="1" fill="currentColor" stroke="none" />
   </Icon>
 );
 
@@ -412,6 +532,8 @@ export const nodeIconMap: Record<string, IconComponent> = {
   scatterPoints: ScatterPointsIcon,
   arc: ArcIcon,
   particleSpray: ParticleSprayIcon,
+  truchetTiles: TruchetTilesIcon,
+  dataPoints: DataPointsIcon,
 
   // Modifiers
   noiseDisplace: NoiseDisplaceIcon,
@@ -436,6 +558,18 @@ export const nodeIconMap: Record<string, IconComponent> = {
   random: RandomIcon,
   vector: VectorIcon,
   boolean: BooleanIcon,
+  mapRange: MapRangeIcon,
+
+  // Select
+  randomSelect: RandomSelectIcon,
+  indexSelect: IndexSelectIcon,
+  regionSelect: RegionSelectIcon,
+  noiseSelect: NoiseSelectIcon,
+
+  // Data
+  bitcoinData: BitcoinDataIcon,
+  weatherData: WeatherDataIcon,
+  earthquakeData: EarthquakeDataIcon,
 
   // Output
   output: OutputIcon,

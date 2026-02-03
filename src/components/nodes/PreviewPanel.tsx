@@ -2,6 +2,8 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useNodeStore } from '../../store/nodeStore';
 import { buildSVG } from '../../svg/builder';
 import { NodeFalloffControl } from './NodeFalloffControl';
+import { NodeAttractorControl } from './NodeAttractorControl';
+import { NodeRegionSelectControl } from './NodeRegionSelectControl';
 
 interface PreviewPanelProps {
   className?: string;
@@ -156,6 +158,22 @@ export function PreviewPanel({ className = '' }: PreviewPanelProps) {
 
         {/* Falloff control overlay */}
         <NodeFalloffControl
+          containerRef={containerRef}
+          canvasRef={canvasRef}
+          previewZoom={previewZoom}
+          panOffset={panOffset}
+        />
+
+        {/* Attractor control overlay */}
+        <NodeAttractorControl
+          containerRef={containerRef}
+          canvasRef={canvasRef}
+          previewZoom={previewZoom}
+          panOffset={panOffset}
+        />
+
+        {/* Region Select control overlay */}
+        <NodeRegionSelectControl
           containerRef={containerRef}
           canvasRef={canvasRef}
           previewZoom={previewZoom}
