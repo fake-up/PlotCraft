@@ -676,6 +676,7 @@ const regionSelectNode: NodeDefinition = {
   outputs: [
     { name: 'selected', type: 'paths' },
     { name: 'unselected', type: 'paths' },
+    { name: 'weight', type: 'numberArray' },
   ],
   parameters: [
     {
@@ -783,6 +784,7 @@ const noiseSelectNode: NodeDefinition = {
   outputs: [
     { name: 'selected', type: 'paths' },
     { name: 'unselected', type: 'paths' },
+    { name: 'weight', type: 'numberArray' },
   ],
   parameters: [
     {
@@ -856,6 +858,34 @@ const noiseSelectNode: NodeDefinition = {
   ],
 };
 
+const selectionMergeNode: NodeDefinition = {
+  type: 'selectionMerge',
+  category: 'select',
+  name: 'Selection Merge',
+  description: 'Combines two selections using boolean operations',
+  inputs: [
+    { name: 'pathsA', type: 'paths' },
+    { name: 'pathsB', type: 'paths' },
+  ],
+  outputs: [
+    { name: 'result', type: 'paths' },
+  ],
+  parameters: [
+    {
+      name: 'operation',
+      type: 'select',
+      label: 'Operation',
+      default: 'union',
+      options: [
+        { value: 'union', label: 'Union (A or B)' },
+        { value: 'intersect', label: 'Intersect (A and B)' },
+        { value: 'subtract', label: 'Subtract (A not B)' },
+        { value: 'difference', label: 'Difference (A xor B)' },
+      ],
+    },
+  ],
+};
+
 // Output node - represents a single layer/pen
 const outputNode: NodeDefinition = {
   type: 'output',
@@ -919,6 +949,39 @@ const outputNode: NodeDefinition = {
   ],
 };
 
+// Weighted Blend - blends between original and modified paths by weight
+const weightedBlendNode: NodeDefinition = {
+  type: 'weightedBlend',
+  category: 'modifier',
+  name: 'Weighted Blend',
+  description: 'Blends between original and modified paths based on per-path weights',
+  inputs: [
+    { name: 'original', type: 'paths' },
+    { name: 'modified', type: 'paths' },
+    { name: 'weights', type: 'numberArray' },
+  ],
+  outputs: [{ name: 'paths', type: 'paths' }],
+  parameters: [
+    {
+      name: 'defaultWeight',
+      type: 'number',
+      label: 'Default Weight',
+      default: 0.5,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      dataType: 'number',
+    },
+    {
+      name: 'invertWeights',
+      type: 'boolean',
+      label: 'Invert Weights',
+      default: false,
+      dataType: 'boolean',
+    },
+  ],
+};
+
 // Merge node - combines multiple path inputs
 const mergeNode: NodeDefinition = {
   type: 'merge',
@@ -961,12 +1024,16 @@ class NodeDefinitionRegistry {
     this.register(indexSelectNode);
     this.register(regionSelectNode);
     this.register(noiseSelectNode);
+    this.register(selectionMergeNode);
 
     // Add output node
     this.register(outputNode);
 
     // Add merge node
     this.register(mergeNode);
+
+    // Add weighted blend node
+    this.register(weightedBlendNode);
 
     // Convert and add all existing modules
     const modules = moduleRegistry.getAll();

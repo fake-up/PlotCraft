@@ -322,6 +322,17 @@ export const AttractorIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Weighted Blend - gradient bar with two paths merging
+export const WeightedBlendIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2 4 Q5 2, 8 4 Q11 6, 14 4" />
+    <path d="M2 12 Q5 10, 8 12 Q11 14, 14 12" />
+    <path d="M2 8 Q5 7, 8 8 Q11 9, 14 8" strokeDasharray="2 1" />
+    <rect x="1" y="6" width="3" height="4" fill="currentColor" stroke="none" opacity="0.3" />
+    <rect x="12" y="6" width="3" height="4" fill="currentColor" stroke="none" opacity="0.8" />
+  </Icon>
+);
+
 // Merge - combine symbol
 export const MergeIcon = (props: IconProps) => (
   <Icon {...props}>
@@ -494,6 +505,14 @@ export const NoiseSelectIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Selection Merge - Venn diagram (two overlapping circles)
+export const SelectionMergeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="6" cy="8" r="4.5" />
+    <circle cx="10" cy="8" r="4.5" />
+  </Icon>
+);
+
 // ============ OUTPUT ============
 
 // Output - export arrow
@@ -550,6 +569,7 @@ export const nodeIconMap: Record<string, IconComponent> = {
   twist: TwistIcon,
   dash: DashIcon,
   attractor: AttractorIcon,
+  weightedBlend: WeightedBlendIcon,
   merge: MergeIcon,
 
   // Values
@@ -565,6 +585,7 @@ export const nodeIconMap: Record<string, IconComponent> = {
   indexSelect: IndexSelectIcon,
   regionSelect: RegionSelectIcon,
   noiseSelect: NoiseSelectIcon,
+  selectionMerge: SelectionMergeIcon,
 
   // Data
   bitcoinData: BitcoinDataIcon,

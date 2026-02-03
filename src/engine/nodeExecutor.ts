@@ -691,25 +691,37 @@ function executeNode(
           regAllPaths.push(...layer.paths);
         }
 
-        // Test if a single point is inside the region (including falloff)
-        const isPointInside = (px: number, py: number): boolean => {
+        // Compute weight for a single point (0 = outside, 1 = fully inside, between = falloff)
+        const pointWeight = (px: number, py: number): number => {
           if (regShape === 'circle') {
             const dx = px - regCenterX;
             const dy = py - regCenterY;
-            return Math.sqrt(dx * dx + dy * dy) <= regRadius + regFalloffX;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= regRadius) return 1;
+            if (regFalloffX <= 0) return 0;
+            if (dist >= regRadius + regFalloffX) return 0;
+            return 1 - (dist - regRadius) / regFalloffX;
           } else {
-            const halfW = regWidth / 2 + regFalloffX;
-            const halfH = regHeight / 2 + regFalloffY;
-            return Math.abs(px - regCenterX) <= halfW && Math.abs(py - regCenterY) <= halfH;
+            const halfW = regWidth / 2;
+            const halfH = regHeight / 2;
+            const distX = Math.abs(px - regCenterX) - halfW;
+            const distY = Math.abs(py - regCenterY) - halfH;
+            if (distX <= 0 && distY <= 0) return 1;
+            if (regFalloffX <= 0 || regFalloffY <= 0) {
+              return (distX <= 0 && distY <= 0) ? 1 : 0;
+            }
+            if (distX > regFalloffX || distY > regFalloffY) return 0;
+            const wx = distX <= 0 ? 1 : 1 - distX / regFalloffX;
+            const wy = distY <= 0 ? 1 : 1 - distY / regFalloffY;
+            return wx * wy;
           }
         };
 
-        // Test if a path is inside the region based on selectBy mode
-        const isPathSelected = (path: Path): boolean => {
-          if (path.points.length === 0) return false;
+        // Compute weight for a path based on selectBy mode
+        const pathWeight = (path: Path): number => {
+          if (path.points.length === 0) return 0;
 
           if (regSelectBy === 'center') {
-            // Compute centroid
             let cx = 0, cy = 0;
             for (const pt of path.points) {
               cx += pt.x;
@@ -717,21 +729,36 @@ function executeNode(
             }
             cx /= path.points.length;
             cy /= path.points.length;
-            return isPointInside(cx, cy);
+            return pointWeight(cx, cy);
           } else if (regSelectBy === 'any') {
-            return path.points.some(pt => isPointInside(pt.x, pt.y));
+            let maxW = 0;
+            for (const pt of path.points) {
+              const w = pointWeight(pt.x, pt.y);
+              if (w > maxW) maxW = w;
+              if (maxW >= 1) break;
+            }
+            return maxW;
           } else {
-            // 'all'
-            return path.points.every(pt => isPointInside(pt.x, pt.y));
+            // 'all' — use minimum weight
+            let minW = 1;
+            for (const pt of path.points) {
+              const w = pointWeight(pt.x, pt.y);
+              if (w < minW) minW = w;
+              if (minW <= 0) break;
+            }
+            return minW;
           }
         };
 
         const regSelectedPaths: Path[] = [];
         const regUnselectedPaths: Path[] = [];
+        const regWeights: number[] = [];
 
         for (const path of regAllPaths) {
-          const inside = regInvert ? !isPathSelected(path) : isPathSelected(path);
-          if (inside) {
+          const w = pathWeight(path);
+          const effectiveW = regInvert ? 1 - w : w;
+          regWeights.push(effectiveW);
+          if (effectiveW > 0) {
             regSelectedPaths.push(path);
           } else {
             regUnselectedPaths.push(path);
@@ -743,9 +770,11 @@ function executeNode(
 
         result = {
           paths: regSelLayers,
+          numberArray: regWeights,
           namedOutputs: {
             selected: regSelLayers,
             unselected: regUnselLayers,
+            weight: regWeights,
           },
         };
         break;
@@ -776,9 +805,9 @@ function executeNode(
           return noise2D((px + nsOffsetX) * freq, (py + nsOffsetY) * freq, nsSeed);
         };
 
-        // Test if a path is selected based on selectBy mode
-        const nsIsPathSelected = (path: Path): boolean => {
-          if (path.points.length === 0) return false;
+        // Compute noise weight for a path based on selectBy mode
+        const nsPathWeight = (path: Path): number => {
+          if (path.points.length === 0) return 0;
 
           if (nsSelectBy === 'center') {
             let cx = 0, cy = 0;
@@ -788,20 +817,34 @@ function executeNode(
             }
             cx /= path.points.length;
             cy /= path.points.length;
-            return sampleNoise(cx, cy) > nsThreshold;
+            return sampleNoise(cx, cy);
           } else if (nsSelectBy === 'any') {
-            return path.points.some(pt => sampleNoise(pt.x, pt.y) > nsThreshold);
+            let maxW = 0;
+            for (const pt of path.points) {
+              const w = sampleNoise(pt.x, pt.y);
+              if (w > maxW) maxW = w;
+            }
+            return maxW;
           } else {
-            // 'all'
-            return path.points.every(pt => sampleNoise(pt.x, pt.y) > nsThreshold);
+            // 'all' — use minimum noise value
+            let minW = 1;
+            for (const pt of path.points) {
+              const w = sampleNoise(pt.x, pt.y);
+              if (w < minW) minW = w;
+            }
+            return minW;
           }
         };
 
         const nsSelectedPaths: Path[] = [];
         const nsUnselectedPaths: Path[] = [];
+        const nsWeights: number[] = [];
 
         for (const path of nsAllPaths) {
-          const selected = nsInvert ? !nsIsPathSelected(path) : nsIsPathSelected(path);
+          const w = nsPathWeight(path);
+          const effectiveW = nsInvert ? 1 - w : w;
+          nsWeights.push(effectiveW);
+          const selected = effectiveW > nsThreshold;
           if (selected) {
             nsSelectedPaths.push(path);
           } else {
@@ -814,10 +857,156 @@ function executeNode(
 
         result = {
           paths: nsSelLayers,
+          numberArray: nsWeights,
           namedOutputs: {
             selected: nsSelLayers,
             unselected: nsUnselLayers,
+            weight: nsWeights,
           },
+        };
+        break;
+      }
+
+      // Selection Merge - combine two path sets with boolean operations
+      case 'selectionMerge': {
+        const layersA = inputValues.pathsA?.paths || [];
+        const layersB = inputValues.pathsB?.paths || [];
+
+        // Flatten input paths
+        const pathsA: Path[] = [];
+        for (const layer of layersA) {
+          pathsA.push(...layer.paths);
+        }
+        const pathsB: Path[] = [];
+        for (const layer of layersB) {
+          pathsB.push(...layer.paths);
+        }
+
+        const operation = params.operation as string;
+        const TOLERANCE = 0.001;
+
+        // Compare two paths by point coordinates within tolerance
+        const pathsMatch = (a: Path, b: Path): boolean => {
+          if (a.points.length !== b.points.length) return false;
+          for (let i = 0; i < a.points.length; i++) {
+            if (
+              Math.abs(a.points[i].x - b.points[i].x) > TOLERANCE ||
+              Math.abs(a.points[i].y - b.points[i].y) > TOLERANCE
+            ) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        // Check if a path exists in a set
+        const pathInSet = (path: Path, set: Path[]): boolean => {
+          return set.some((s) => pathsMatch(path, s));
+        };
+
+        let resultPaths: Path[];
+
+        switch (operation) {
+          case 'union': {
+            // All from A, plus anything in B not already in A
+            resultPaths = [...pathsA];
+            for (const pb of pathsB) {
+              if (!pathInSet(pb, pathsA)) {
+                resultPaths.push(pb);
+              }
+            }
+            break;
+          }
+          case 'intersect': {
+            // Only paths that appear in both A and B
+            resultPaths = pathsA.filter((pa) => pathInSet(pa, pathsB));
+            break;
+          }
+          case 'subtract': {
+            // Paths from A that are NOT in B
+            resultPaths = pathsA.filter((pa) => !pathInSet(pa, pathsB));
+            break;
+          }
+          case 'difference': {
+            // Paths in A or B but NOT both (XOR)
+            const onlyA = pathsA.filter((pa) => !pathInSet(pa, pathsB));
+            const onlyB = pathsB.filter((pb) => !pathInSet(pb, pathsA));
+            resultPaths = [...onlyA, ...onlyB];
+            break;
+          }
+          default:
+            resultPaths = [...pathsA, ...pathsB];
+        }
+
+        result = {
+          paths: [{ id: 'result', paths: resultPaths }],
+        };
+        break;
+      }
+
+      // Weighted Blend - blend between original and modified paths by weight
+      case 'weightedBlend': {
+        const origLayers = inputValues.original?.paths || [];
+        const modLayers = inputValues.modified?.paths || [];
+        const weightsArr = inputValues.weights?.numberArray || [];
+        const defaultWeight = params.defaultWeight as number;
+        const invertWeights = params.invertWeights as boolean;
+
+        // Flatten paths
+        const origPaths: Path[] = [];
+        for (const layer of origLayers) {
+          origPaths.push(...layer.paths);
+        }
+        const modPaths: Path[] = [];
+        for (const layer of modLayers) {
+          modPaths.push(...layer.paths);
+        }
+
+        const blendedPaths: Path[] = [];
+        const count = Math.max(origPaths.length, modPaths.length);
+
+        for (let i = 0; i < count; i++) {
+          const orig = origPaths[i];
+          const mod = modPaths[i];
+
+          // Get weight for this path index
+          let w = i < weightsArr.length ? weightsArr[i] : defaultWeight;
+          w = Math.max(0, Math.min(1, w));
+          if (invertWeights) w = 1 - w;
+
+          if (!orig && mod) {
+            // No original — use modified scaled by weight (or skip if w=0)
+            if (w > 0) blendedPaths.push(mod);
+          } else if (orig && !mod) {
+            // No modified — use original
+            blendedPaths.push(orig);
+          } else if (orig && mod) {
+            if (w === 0) {
+              blendedPaths.push(orig);
+            } else if (w === 1) {
+              blendedPaths.push(mod);
+            } else {
+              // Interpolate point positions
+              const blendedPoints: { x: number; y: number }[] = [];
+              const len = orig.points.length;
+              for (let j = 0; j < len; j++) {
+                const op = orig.points[j];
+                // If modified has fewer points, clamp to last modified point
+                const mp = j < mod.points.length
+                  ? mod.points[j]
+                  : mod.points[mod.points.length - 1];
+                blendedPoints.push({
+                  x: op.x + (mp.x - op.x) * w,
+                  y: op.y + (mp.y - op.y) * w,
+                });
+              }
+              blendedPaths.push({ points: blendedPoints, closed: orig.closed });
+            }
+          }
+        }
+
+        result = {
+          paths: [{ id: 'weightedBlend', paths: blendedPaths }],
         };
         break;
       }
