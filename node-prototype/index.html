@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlotCraft Node Editor Prototype</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #app {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: 180px;
+      background: #16213e;
+      border-right: 1px solid #2a3f5f;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+    }
+
+    #sidebar h2 {
+      color: #e0e0e0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      margin-top: 12px;
+    }
+
+    #sidebar h2:first-child {
+      margin-top: 0;
+    }
+
+    .node-template {
+      background: #1f3460;
+      border: 1px solid #2a4a7f;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e0e0e0;
+      cursor: grab;
+      transition: all 0.2s;
+      font-size: 12px;
+    }
+
+    .node-template:hover {
+      background: #2a4a7f;
+      transform: translateX(3px);
+    }
+
+    .node-template .type-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .node-template .type-indicator.generator { background: #10b981; }
+    .node-template .type-indicator.modifier { background: #f59e0b; }
+    .node-template .type-indicator.output { background: #ef4444; }
+    .node-template .type-indicator.value { background: #8b5cf6; }
+
+    /* Main area */
+    #main-area {
+      flex: 1;
+      display: flex;
+    }
+
+    /* Canvas */
+    #canvas-container {
+      flex: 2;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image:
+        radial-gradient(circle, #2a3f5f 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    #connections-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #nodes-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+    }
+
+    /* Preview Panel */
+    #preview-panel {
+      width: 33%;
+      min-width: 350px;
+      background: #0f172a;
+      border-left: 1px solid #2a3f5f;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    #preview-panel h3 {
+      color: #e0e0e0;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    #preview-wrapper {
+      flex: 1;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      min-height: 400px;
+    }
+
+    #preview-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    #preview-stats {
+      margin-top: 12px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      background: #1e293b;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    .stat-item .label {
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+
+    .stat-item .value {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Nodes */
+    .node {
+      position: absolute;
+      background: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      min-width: 160px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      user-select: none;
+    }
+
+    .node.selected {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3), 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .node.generator { border-color: #10b981; }
+    .node.modifier { border-color: #f59e0b; }
+    .node.output { border-color: #ef4444; }
+    .node.value { border-color: #8b5cf6; }
+
+    .node.selected.generator { border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3), 0 4px 20px rgba(0,0,0,0.4); }
+    .node.selected.modifier { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3), 0 4px 20px rgba(0,0,0,0.4); }
+    .node.selected.output { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3), 0 4px 20px rgba(0,0,0,0.4); }
+    .node.selected.value { border-color: #8b5cf6; box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3), 0 4px 20px rgba(0,0,0,0.4); }
+
+    .node-header {
+      padding: 8px 10px;
+      border-bottom: 1px solid #334155;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .node-header:active {
+      cursor: grabbing;
+    }
+
+    .node-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    .node.generator .node-icon { background: #10b981; }
+    .node.modifier .node-icon { background: #f59e0b; }
+    .node.output .node-icon { background: #ef4444; }
+    .node.value .node-icon { background: #8b5cf6; }
+
+    .node-title {
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .node-content {
+      padding: 8px 10px;
+    }
+
+    /* Node parameters with input ports */
+    .node-param {
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .node-param:last-child {
+      margin-bottom: 0;
+    }
+
+    .node-param label {
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+      font-size: 10px;
+      margin-bottom: 3px;
+      padding-left: 12px;
+    }
+
+    .node-param input[type="range"] {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #334155;
+      appearance: none;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    .node-param input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #60a5fa;
+      cursor: pointer;
+    }
+
+    .node-param input[type="range"]:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .node-param input[type="range"]:disabled::-webkit-slider-thumb {
+      background: #64748b;
+    }
+
+    .node-param select {
+      width: 100%;
+      background: #334155;
+      border: none;
+      color: #e2e8f0;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
+    .param-connected-value {
+      background: #10b981;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 8px;
+      display: inline-block;
+    }
+
+    /* Connection points */
+    .conn-point {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      cursor: crosshair;
+      transition: all 0.15s;
+      z-index: 10;
+      border: 2px solid;
+    }
+
+    .conn-point:hover {
+      transform: scale(1.4);
+    }
+
+    /* Data type colors */
+    .conn-point.type-paths {
+      background: #1e3a5f;
+      border-color: #3b82f6;
+    }
+
+    .conn-point.type-paths.connected {
+      background: #3b82f6;
+    }
+
+    .conn-point.type-number {
+      background: #14532d;
+      border-color: #22c55e;
+    }
+
+    .conn-point.type-number.connected {
+      background: #22c55e;
+    }
+
+    .conn-point.input {
+      left: -7px;
+    }
+
+    .conn-point.output {
+      right: -7px;
+    }
+
+    .conn-point.param-input {
+      left: -7px;
+      width: 10px;
+      height: 10px;
+    }
+
+    .conn-point.compatible {
+      box-shadow: 0 0 8px currentColor;
+      transform: scale(1.3);
+    }
+
+    .conn-point.incompatible {
+      opacity: 0.3;
+    }
+
+    /* Node main IO ports */
+    .node-io {
+      position: relative;
+      padding: 4px 0;
+    }
+
+    .io-row {
+      display: flex;
+      align-items: center;
+      padding: 3px 10px;
+      font-size: 10px;
+      color: #94a3b8;
+      position: relative;
+    }
+
+    .io-row.input {
+      justify-content: flex-start;
+      padding-left: 16px;
+    }
+
+    .io-row.output {
+      justify-content: flex-end;
+      padding-right: 16px;
+    }
+
+    /* Connection lines */
+    .connection-line {
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+    }
+
+    .connection-line.type-paths {
+      stroke: #3b82f6;
+    }
+
+    .connection-line.type-number {
+      stroke: #22c55e;
+    }
+
+    .connection-line.preview {
+      stroke-dasharray: 5, 5;
+      opacity: 0.7;
+    }
+
+    /* Instructions */
+    #instructions {
+      position: fixed;
+      bottom: 16px;
+      left: 196px;
+      background: rgba(30, 41, 59, 0.95);
+      padding: 10px 14px;
+      border-radius: 6px;
+      color: #94a3b8;
+      font-size: 11px;
+      z-index: 100;
+    }
+
+    #instructions kbd {
+      background: #334155;
+      padding: 2px 5px;
+      border-radius: 3px;
+      margin: 0 2px;
+      font-size: 10px;
+    }
+
+    /* Type legend */
+    #type-legend {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 41, 59, 0.95);
+      padding: 8px 14px;
+      border-radius: 6px;
+      display: flex;
+      gap: 16px;
+      z-index: 100;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-dot.paths { background: #3b82f6; }
+    .legend-dot.number { background: #22c55e; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <h2>Generators</h2>
+      <div class="node-template" draggable="true" data-type="circle">
+        <span class="type-indicator generator"></span>Circle
+      </div>
+      <div class="node-template" draggable="true" data-type="grid">
+        <span class="type-indicator generator"></span>Grid
+      </div>
+
+      <h2>Modifiers</h2>
+      <div class="node-template" draggable="true" data-type="noise-displace">
+        <span class="type-indicator modifier"></span>Noise Displace
+      </div>
+
+      <h2>Values</h2>
+      <div class="node-template" draggable="true" data-type="number">
+        <span class="type-indicator value"></span>Number
+      </div>
+      <div class="node-template" draggable="true" data-type="math">
+        <span class="type-indicator value"></span>Math
+      </div>
+      <div class="node-template" draggable="true" data-type="random">
+        <span class="type-indicator value"></span>Random
+      </div>
+
+      <h2>Output</h2>
+      <div class="node-template" draggable="true" data-type="output">
+        <span class="type-indicator output"></span>Output
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="canvas-container">
+        <div id="canvas"></div>
+        <svg id="connections-svg"></svg>
+        <div id="nodes-container"></div>
+      </div>
+
+      <div id="preview-panel">
+        <h3>Preview</h3>
+        <div id="preview-wrapper">
+          <canvas id="preview-canvas"></canvas>
+        </div>
+        <div id="preview-stats">
+          <div class="stat-item">
+            <div class="label">Nodes</div>
+            <div class="value" id="stat-nodes">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">Connections</div>
+            <div class="value" id="stat-connections">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">Paths</div>
+            <div class="value" id="stat-paths">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="instructions">
+    Drag nodes from sidebar | Connect matching types | <kbd>Del</kbd> removes selected | <kbd>Esc</kbd> cancels
+  </div>
+
+  <div id="type-legend">
+    <div class="legend-item"><div class="legend-dot paths"></div> Paths</div>
+    <div class="legend-item"><div class="legend-dot number"></div> Number</div>
+  </div>
+
+  <script>
+    // ============================================
+    // Node Editor Prototype v2
+    // ============================================
+
+    const state = {
+      nodes: [],
+      connections: [],
+      selectedNode: null,
+      draggingNode: null,
+      dragOffset: { x: 0, y: 0 },
+      connecting: null,
+      mousePos: { x: 0, y: 0 },
+      nextNodeId: 1,
+    };
+
+    // Data types
+    const DataType = {
+      PATHS: 'paths',
+      NUMBER: 'number',
+    };
+
+    // Node definitions
+    const nodeDefinitions = {
+      'circle': {
+        category: 'generator',
+        title: 'Circle',
+        icon: '◯',
+        inputs: [],
+        outputs: [{ name: 'paths', type: DataType.PATHS }],
+        params: [
+          { name: 'radius', label: 'Radius', type: DataType.NUMBER, min: 10, max: 150, default: 50 },
+          { name: 'segments', label: 'Segments', type: DataType.NUMBER, min: 8, max: 64, default: 32 },
+          { name: 'centerX', label: 'Center X', type: DataType.NUMBER, min: 0, max: 200, default: 100 },
+          { name: 'centerY', label: 'Center Y', type: DataType.NUMBER, min: 0, max: 200, default: 100 },
+        ],
+      },
+      'grid': {
+        category: 'generator',
+        title: 'Grid',
+        icon: '⊞',
+        inputs: [],
+        outputs: [{ name: 'paths', type: DataType.PATHS }],
+        params: [
+          { name: 'rows', label: 'Rows', type: DataType.NUMBER, min: 2, max: 20, default: 5 },
+          { name: 'cols', label: 'Columns', type: DataType.NUMBER, min: 2, max: 20, default: 5 },
+          { name: 'spacing', label: 'Spacing', type: DataType.NUMBER, min: 5, max: 40, default: 15 },
+        ],
+      },
+      'noise-displace': {
+        category: 'modifier',
+        title: 'Noise Displace',
+        icon: '〰',
+        inputs: [{ name: 'paths', type: DataType.PATHS }],
+        outputs: [{ name: 'paths', type: DataType.PATHS }],
+        params: [
+          { name: 'amount', label: 'Amount', type: DataType.NUMBER, min: 0, max: 50, default: 10 },
+          { name: 'scale', label: 'Scale', type: DataType.NUMBER, min: 0.01, max: 0.5, default: 0.05 },
+        ],
+      },
+      'output': {
+        category: 'output',
+        title: 'Output',
+        icon: '▶',
+        inputs: [{ name: 'paths', type: DataType.PATHS }],
+        outputs: [],
+        params: [],
+      },
+      'number': {
+        category: 'value',
+        title: 'Number',
+        icon: '#',
+        inputs: [],
+        outputs: [{ name: 'value', type: DataType.NUMBER }],
+        params: [
+          { name: 'value', label: 'Value', type: DataType.NUMBER, min: 0, max: 200, default: 50, noInput: true },
+        ],
+      },
+      'math': {
+        category: 'value',
+        title: 'Math',
+        icon: '±',
+        inputs: [
+          { name: 'a', type: DataType.NUMBER },
+          { name: 'b', type: DataType.NUMBER },
+        ],
+        outputs: [{ name: 'result', type: DataType.NUMBER }],
+        params: [
+          { name: 'operation', label: 'Operation', type: 'select', options: ['add', 'subtract', 'multiply', 'divide'], default: 'add', noInput: true },
+          { name: 'aDefault', label: 'A Default', type: DataType.NUMBER, min: 0, max: 200, default: 10, noInput: true },
+          { name: 'bDefault', label: 'B Default', type: DataType.NUMBER, min: 0, max: 200, default: 10, noInput: true },
+        ],
+      },
+      'random': {
+        category: 'value',
+        title: 'Random',
+        icon: '?',
+        inputs: [],
+        outputs: [{ name: 'value', type: DataType.NUMBER }],
+        params: [
+          { name: 'min', label: 'Min', type: DataType.NUMBER, min: 0, max: 100, default: 0, noInput: true },
+          { name: 'max', label: 'Max', type: DataType.NUMBER, min: 0, max: 200, default: 100, noInput: true },
+        ],
+      },
+    };
+
+    // DOM elements
+    const nodesContainer = document.getElementById('nodes-container');
+    const connectionsSvg = document.getElementById('connections-svg');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const previewCtx = previewCanvas.getContext('2d');
+
+    // ============================================
+    // Node Value Evaluation
+    // ============================================
+
+    function evaluateNode(nodeId, visited = new Set()) {
+      if (visited.has(nodeId)) return null; // Prevent cycles
+      visited.add(nodeId);
+
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (!node) return null;
+
+      const def = nodeDefinitions[node.type];
+
+      // Get parameter values (either from connections or local)
+      const paramValues = {};
+      def.params.forEach(param => {
+        // Check if this param has an incoming connection
+        const conn = state.connections.find(
+          c => c.toNode === nodeId && c.toPort === `param:${param.name}`
+        );
+
+        if (conn) {
+          // Evaluate the connected node
+          const sourceValue = evaluateNode(conn.fromNode, new Set(visited));
+          paramValues[param.name] = sourceValue !== null ? sourceValue : param.default;
+        } else {
+          paramValues[param.name] = node.params[param.name];
+        }
+      });
+
+      // Evaluate based on node type
+      switch (node.type) {
+        case 'number':
+          return paramValues.value;
+
+        case 'random':
+          return paramValues.min + Math.random() * (paramValues.max - paramValues.min);
+
+        case 'math': {
+          // Get input values
+          let a = paramValues.aDefault;
+          let b = paramValues.bDefault;
+
+          const connA = state.connections.find(c => c.toNode === nodeId && c.toPort === 'input:0');
+          const connB = state.connections.find(c => c.toNode === nodeId && c.toPort === 'input:1');
+
+          if (connA) {
+            const val = evaluateNode(connA.fromNode, new Set(visited));
+            if (val !== null) a = val;
+          }
+          if (connB) {
+            const val = evaluateNode(connB.fromNode, new Set(visited));
+            if (val !== null) b = val;
+          }
+
+          switch (paramValues.operation) {
+            case 'add': return a + b;
+            case 'subtract': return a - b;
+            case 'multiply': return a * b;
+            case 'divide': return b !== 0 ? a / b : 0;
+            default: return a;
+          }
+        }
+
+        default:
+          return null;
+      }
+    }
+
+    function getEffectiveParamValue(nodeId, paramName) {
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (!node) return null;
+
+      const conn = state.connections.find(
+        c => c.toNode === nodeId && c.toPort === `param:${paramName}`
+      );
+
+      if (conn) {
+        const value = evaluateNode(conn.fromNode);
+        return value !== null ? value : node.params[paramName];
+      }
+
+      return node.params[paramName];
+    }
+
+    // ============================================
+    // Node Management
+    // ============================================
+
+    function createNode(type, x, y) {
+      const def = nodeDefinitions[type];
+      if (!def) return null;
+
+      const node = {
+        id: state.nextNodeId++,
+        type,
+        x,
+        y,
+        params: {},
+      };
+
+      def.params.forEach(p => {
+        node.params[p.name] = p.default;
+      });
+
+      state.nodes.push(node);
+      renderNode(node);
+      updateStats();
+      return node;
+    }
+
+    function renderNode(node) {
+      const def = nodeDefinitions[node.type];
+      const el = document.createElement('div');
+      el.className = `node ${def.category}`;
+      el.dataset.nodeId = node.id;
+      el.style.left = `${node.x}px`;
+      el.style.top = `${node.y}px`;
+
+      // Build inputs HTML
+      let inputsHtml = '';
+      def.inputs.forEach((input, i) => {
+        inputsHtml += `
+          <div class="io-row input">
+            <div class="conn-point input type-${input.type}"
+              data-port-type="input"
+              data-port-index="${i}"
+              data-data-type="${input.type}"
+              title="${input.name} (${input.type})">
+            </div>
+            ${input.name}
+          </div>
+        `;
+      });
+
+      // Build outputs HTML
+      let outputsHtml = '';
+      def.outputs.forEach((output, i) => {
+        outputsHtml += `
+          <div class="io-row output">
+            ${output.name}
+            <div class="conn-point output type-${output.type}"
+              data-port-type="output"
+              data-port-index="${i}"
+              data-data-type="${output.type}"
+              title="${output.name} (${output.type})">
+            </div>
+          </div>
+        `;
+      });
+
+      // Build params HTML
+      let paramsHtml = '';
+      def.params.forEach((p, i) => {
+        const hasInput = p.type === DataType.NUMBER && !p.noInput;
+        const inputPort = hasInput ? `
+          <div class="conn-point param-input type-number"
+            data-port-type="param"
+            data-param-name="${p.name}"
+            data-data-type="number"
+            title="${p.name} input">
+          </div>
+        ` : '';
+
+        if (p.type === 'select') {
+          const optionsHtml = p.options.map(opt =>
+            `<option value="${opt}" ${node.params[p.name] === opt ? 'selected' : ''}>${opt}</option>`
+          ).join('');
+          paramsHtml += `
+            <div class="node-param">
+              ${inputPort}
+              <label><span>${p.label}</span></label>
+              <select data-param="${p.name}">${optionsHtml}</select>
+            </div>
+          `;
+        } else {
+          paramsHtml += `
+            <div class="node-param" data-param-name="${p.name}">
+              ${inputPort}
+              <label>
+                <span>${p.label}</span>
+                <span class="param-value" data-param="${p.name}">${Number(node.params[p.name]).toFixed(p.min < 1 ? 2 : 0)}</span>
+              </label>
+              <input type="range"
+                data-param="${p.name}"
+                min="${p.min}"
+                max="${p.max}"
+                value="${node.params[p.name]}"
+                step="${p.min < 1 ? 0.01 : 1}"
+              >
+            </div>
+          `;
+        }
+      });
+
+      el.innerHTML = `
+        <div class="node-header">
+          <div class="node-icon">${def.icon}</div>
+          <div class="node-title">${def.title}</div>
+        </div>
+        ${inputsHtml || outputsHtml ? `<div class="node-io">${inputsHtml}${outputsHtml}</div>` : ''}
+        ${paramsHtml ? `<div class="node-content">${paramsHtml}</div>` : ''}
+      `;
+
+      nodesContainer.appendChild(el);
+      setupNodeEvents(el, node);
+    }
+
+    function setupNodeEvents(el, node) {
+      const def = nodeDefinitions[node.type];
+
+      // Header drag
+      const header = el.querySelector('.node-header');
+      header.addEventListener('mousedown', (e) => {
+        selectNode(node.id);
+        state.draggingNode = node;
+        state.dragOffset = { x: e.clientX - node.x, y: e.clientY - node.y };
+        e.preventDefault();
+      });
+
+      // Connection points
+      el.querySelectorAll('.conn-point').forEach(point => {
+        point.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          const portType = point.dataset.portType;
+          const dataType = point.dataset.dataType;
+
+          if (portType === 'output') {
+            state.connecting = {
+              nodeId: node.id,
+              portType: 'output',
+              portIndex: parseInt(point.dataset.portIndex),
+              dataType,
+            };
+          } else {
+            // Input or param - check for existing connection to drag
+            let portId;
+            if (portType === 'param') {
+              portId = `param:${point.dataset.paramName}`;
+            } else {
+              portId = `input:${point.dataset.portIndex}`;
+            }
+
+            const existingIdx = state.connections.findIndex(
+              c => c.toNode === node.id && c.toPort === portId
+            );
+
+            if (existingIdx >= 0) {
+              const existing = state.connections[existingIdx];
+              state.connections.splice(existingIdx, 1);
+              state.connecting = {
+                nodeId: existing.fromNode,
+                portType: 'output',
+                portIndex: existing.fromPort,
+                dataType,
+              };
+              renderConnections();
+              updateNodeParamUI(node.id);
+            }
+          }
+        });
+
+        point.addEventListener('mouseup', (e) => {
+          if (!state.connecting) return;
+
+          const portType = point.dataset.portType;
+          const dataType = point.dataset.dataType;
+
+          // Must be connecting to input/param and types must match
+          if ((portType === 'input' || portType === 'param') &&
+              state.connecting.portType === 'output' &&
+              state.connecting.dataType === dataType &&
+              state.connecting.nodeId !== node.id) {
+
+            let portId;
+            if (portType === 'param') {
+              portId = `param:${point.dataset.paramName}`;
+            } else {
+              portId = `input:${point.dataset.portIndex}`;
+            }
+
+            // Remove existing connection to this port
+            state.connections = state.connections.filter(
+              c => !(c.toNode === node.id && c.toPort === portId)
+            );
+
+            state.connections.push({
+              fromNode: state.connecting.nodeId,
+              fromPort: state.connecting.portIndex,
+              toNode: node.id,
+              toPort: portId,
+              dataType,
+            });
+
+            updateNodeParamUI(node.id);
+          }
+
+          state.connecting = null;
+          renderConnections();
+          updatePreview();
+        });
+      });
+
+      // Param inputs
+      el.querySelectorAll('input[type="range"]').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const paramName = e.target.dataset.param;
+          const value = parseFloat(e.target.value);
+          node.params[paramName] = value;
+
+          const param = def.params.find(p => p.name === paramName);
+          el.querySelector(`.param-value[data-param="${paramName}"]`).textContent =
+            value.toFixed(param && param.min < 1 ? 2 : 0);
+
+          updatePreview();
+        });
+      });
+
+      el.querySelectorAll('select').forEach(select => {
+        select.addEventListener('change', (e) => {
+          node.params[e.target.dataset.param] = e.target.value;
+          updatePreview();
+        });
+      });
+
+      el.addEventListener('click', (e) => {
+        if (!e.target.closest('.conn-point')) {
+          selectNode(node.id);
+        }
+      });
+    }
+
+    function updateNodeParamUI(nodeId) {
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      const el = document.querySelector(`.node[data-node-id="${nodeId}"]`);
+      if (!el) return;
+
+      const def = nodeDefinitions[node.type];
+
+      def.params.forEach(param => {
+        if (param.type !== DataType.NUMBER || param.noInput) return;
+
+        const paramEl = el.querySelector(`.node-param[data-param-name="${param.name}"]`);
+        if (!paramEl) return;
+
+        const conn = state.connections.find(
+          c => c.toNode === nodeId && c.toPort === `param:${param.name}`
+        );
+
+        const slider = paramEl.querySelector('input[type="range"]');
+        const valueEl = paramEl.querySelector('.param-value');
+        const port = paramEl.querySelector('.conn-point.param-input');
+
+        if (conn) {
+          // Connected - disable slider and show connected value
+          slider.disabled = true;
+          const value = evaluateNode(conn.fromNode);
+          if (value !== null) {
+            valueEl.innerHTML = `<span class="param-connected-value">${value.toFixed(param.min < 1 ? 2 : 0)}</span>`;
+          }
+          if (port) port.classList.add('connected');
+        } else {
+          // Not connected - enable slider
+          slider.disabled = false;
+          valueEl.textContent = node.params[param.name].toFixed(param.min < 1 ? 2 : 0);
+          if (port) port.classList.remove('connected');
+        }
+      });
+
+      // Update input port visuals
+      el.querySelectorAll('.conn-point.input').forEach(port => {
+        const portIndex = port.dataset.portIndex;
+        const conn = state.connections.find(
+          c => c.toNode === nodeId && c.toPort === `input:${portIndex}`
+        );
+        port.classList.toggle('connected', !!conn);
+      });
+    }
+
+    function selectNode(nodeId) {
+      state.selectedNode = nodeId;
+      document.querySelectorAll('.node').forEach(el => {
+        el.classList.toggle('selected', parseInt(el.dataset.nodeId) === nodeId);
+      });
+    }
+
+    function deleteSelectedNode() {
+      if (!state.selectedNode) return;
+
+      state.connections = state.connections.filter(
+        c => c.fromNode !== state.selectedNode && c.toNode !== state.selectedNode
+      );
+
+      // Update UI for nodes that were connected
+      const affectedNodes = new Set();
+      state.connections.forEach(c => {
+        affectedNodes.add(c.toNode);
+      });
+
+      state.nodes = state.nodes.filter(n => n.id !== state.selectedNode);
+
+      const el = document.querySelector(`.node[data-node-id="${state.selectedNode}"]`);
+      if (el) el.remove();
+
+      state.selectedNode = null;
+      renderConnections();
+      updatePreview();
+      updateStats();
+    }
+
+    // ============================================
+    // Connection Rendering
+    // ============================================
+
+    function getPortPosition(nodeId, portType, portId) {
+      const nodeEl = document.querySelector(`.node[data-node-id="${nodeId}"]`);
+      if (!nodeEl) return null;
+
+      let point;
+      if (portType === 'output') {
+        point = nodeEl.querySelector(`.conn-point.output[data-port-index="${portId}"]`);
+      } else if (portType === 'param') {
+        point = nodeEl.querySelector(`.conn-point.param-input[data-param-name="${portId}"]`);
+      } else {
+        point = nodeEl.querySelector(`.conn-point.input[data-port-index="${portId}"]`);
+      }
+
+      if (!point) return null;
+
+      const nodeRect = nodeEl.getBoundingClientRect();
+      const pointRect = point.getBoundingClientRect();
+      const containerRect = nodesContainer.getBoundingClientRect();
+
+      return {
+        x: pointRect.left + pointRect.width / 2 - containerRect.left,
+        y: pointRect.top + pointRect.height / 2 - containerRect.top,
+      };
+    }
+
+    function renderConnections() {
+      connectionsSvg.innerHTML = '';
+
+      state.connections.forEach(conn => {
+        const from = getPortPosition(conn.fromNode, 'output', conn.fromPort);
+
+        let to;
+        if (conn.toPort.startsWith('param:')) {
+          to = getPortPosition(conn.toNode, 'param', conn.toPort.replace('param:', ''));
+        } else {
+          to = getPortPosition(conn.toNode, 'input', conn.toPort.replace('input:', ''));
+        }
+
+        if (from && to) {
+          const path = createConnectionPath(from, to);
+          path.classList.add('connection-line', `type-${conn.dataType}`);
+          connectionsSvg.appendChild(path);
+        }
+      });
+
+      // Update connected states
+      document.querySelectorAll('.conn-point.output').forEach(point => {
+        const nodeId = parseInt(point.closest('.node').dataset.nodeId);
+        const portIndex = parseInt(point.dataset.portIndex);
+        const hasConnection = state.connections.some(
+          c => c.fromNode === nodeId && c.fromPort === portIndex
+        );
+        point.classList.toggle('connected', hasConnection);
+      });
+
+      // Update all node param UIs
+      state.nodes.forEach(node => updateNodeParamUI(node.id));
+
+      updateStats();
+    }
+
+    function renderPreviewConnection() {
+      const oldPreview = connectionsSvg.querySelector('.preview');
+      if (oldPreview) oldPreview.remove();
+
+      if (!state.connecting) return;
+
+      const from = getPortPosition(
+        state.connecting.nodeId,
+        'output',
+        state.connecting.portIndex
+      );
+
+      if (from) {
+        const containerRect = nodesContainer.getBoundingClientRect();
+        const to = {
+          x: state.mousePos.x - containerRect.left,
+          y: state.mousePos.y - containerRect.top,
+        };
+
+        const path = createConnectionPath(from, to);
+        path.classList.add('connection-line', 'preview', `type-${state.connecting.dataType}`);
+        connectionsSvg.appendChild(path);
+      }
+
+      // Show compatible ports
+      document.querySelectorAll('.conn-point').forEach(point => {
+        const isInput = point.classList.contains('input') || point.classList.contains('param-input');
+        const dataType = point.dataset.dataType;
+        const nodeId = parseInt(point.closest('.node').dataset.nodeId);
+
+        if (isInput && nodeId !== state.connecting.nodeId) {
+          if (dataType === state.connecting.dataType) {
+            point.classList.add('compatible');
+            point.classList.remove('incompatible');
+          } else {
+            point.classList.add('incompatible');
+            point.classList.remove('compatible');
+          }
+        }
+      });
+    }
+
+    function createConnectionPath(from, to) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const dx = Math.abs(to.x - from.x);
+      const controlOffset = Math.max(40, dx * 0.4);
+
+      const d = `M ${from.x} ${from.y}
+                 C ${from.x + controlOffset} ${from.y},
+                   ${to.x - controlOffset} ${to.y},
+                   ${to.x} ${to.y}`;
+
+      path.setAttribute('d', d);
+      return path;
+    }
+
+    // ============================================
+    // Preview Rendering
+    // ============================================
+
+    function updatePreview() {
+      const wrapper = document.getElementById('preview-wrapper');
+      previewCanvas.width = wrapper.offsetWidth * 2;
+      previewCanvas.height = wrapper.offsetHeight * 2;
+
+      const ctx = previewCtx;
+      const scale = 2;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+      const w = wrapper.offsetWidth;
+      const h = wrapper.offsetHeight;
+
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+
+      const outputNode = state.nodes.find(n => n.type === 'output');
+      if (!outputNode) return;
+
+      // Trace back from output
+      const pathsToRender = collectPaths(outputNode.id);
+
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      pathsToRender.forEach(path => {
+        ctx.beginPath();
+        path.forEach((pt, i) => {
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        });
+        if (path.closed) ctx.closePath();
+        ctx.stroke();
+      });
+
+      document.getElementById('stat-paths').textContent = pathsToRender.length;
+    }
+
+    function collectPaths(nodeId, visited = new Set()) {
+      if (visited.has(nodeId)) return [];
+      visited.add(nodeId);
+
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (!node) return [];
+
+      const def = nodeDefinitions[node.type];
+
+      // Get effective param values
+      const params = {};
+      def.params.forEach(p => {
+        params[p.name] = getEffectiveParamValue(nodeId, p.name);
+      });
+
+      // Find incoming path connections
+      let inputPaths = [];
+      const pathInput = state.connections.find(
+        c => c.toNode === nodeId && c.toPort === 'input:0' && c.dataType === DataType.PATHS
+      );
+
+      if (pathInput) {
+        inputPaths = collectPaths(pathInput.fromNode, new Set(visited));
+      }
+
+      // Generate or modify paths based on node type
+      switch (node.type) {
+        case 'circle': {
+          const cx = params.centerX || 100;
+          const cy = params.centerY || 100;
+          const r = params.radius || 50;
+          const segs = Math.floor(params.segments) || 32;
+
+          const path = [];
+          for (let i = 0; i <= segs; i++) {
+            const angle = (i / segs) * Math.PI * 2;
+            path.push({
+              x: cx + Math.cos(angle) * r,
+              y: cy + Math.sin(angle) * r,
+            });
+          }
+          path.closed = true;
+          return [path];
+        }
+
+        case 'grid': {
+          const rows = Math.floor(params.rows) || 5;
+          const cols = Math.floor(params.cols) || 5;
+          const spacing = params.spacing || 15;
+          const startX = 100 - (cols - 1) * spacing / 2;
+          const startY = 100 - (rows - 1) * spacing / 2;
+
+          const paths = [];
+
+          // Horizontal lines
+          for (let r = 0; r < rows; r++) {
+            paths.push([
+              { x: startX, y: startY + r * spacing },
+              { x: startX + (cols - 1) * spacing, y: startY + r * spacing },
+            ]);
+          }
+
+          // Vertical lines
+          for (let c = 0; c < cols; c++) {
+            paths.push([
+              { x: startX + c * spacing, y: startY },
+              { x: startX + c * spacing, y: startY + (rows - 1) * spacing },
+            ]);
+          }
+
+          return paths;
+        }
+
+        case 'noise-displace': {
+          const amount = params.amount || 0;
+          const scale = params.scale || 0.05;
+
+          return inputPaths.map(path =>
+            path.map(pt => ({
+              x: pt.x + (Math.sin(pt.x * scale * 10 + pt.y * scale * 5) * amount),
+              y: pt.y + (Math.cos(pt.y * scale * 10 + pt.x * scale * 5) * amount),
+            }))
+          );
+        }
+
+        case 'output':
+          return inputPaths;
+
+        default:
+          return inputPaths;
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('stat-nodes').textContent = state.nodes.length;
+      document.getElementById('stat-connections').textContent = state.connections.length;
+    }
+
+    // ============================================
+    // Event Handlers
+    // ============================================
+
+    document.addEventListener('mousemove', (e) => {
+      state.mousePos = { x: e.clientX, y: e.clientY };
+
+      if (state.draggingNode) {
+        state.draggingNode.x = e.clientX - state.dragOffset.x;
+        state.draggingNode.y = e.clientY - state.dragOffset.y;
+
+        const el = document.querySelector(`.node[data-node-id="${state.draggingNode.id}"]`);
+        if (el) {
+          el.style.left = `${state.draggingNode.x}px`;
+          el.style.top = `${state.draggingNode.y}px`;
+        }
+
+        renderConnections();
+      }
+
+      if (state.connecting) {
+        renderPreviewConnection();
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      state.draggingNode = null;
+
+      if (state.connecting) {
+        state.connecting = null;
+        const preview = connectionsSvg.querySelector('.preview');
+        if (preview) preview.remove();
+
+        document.querySelectorAll('.conn-point').forEach(point => {
+          point.classList.remove('compatible', 'incompatible');
+        });
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
+          deleteSelectedNode();
+        }
+      }
+      if (e.key === 'Escape') {
+        state.connecting = null;
+        const preview = connectionsSvg.querySelector('.preview');
+        if (preview) preview.remove();
+        document.querySelectorAll('.conn-point').forEach(point => {
+          point.classList.remove('compatible', 'incompatible');
+        });
+      }
+    });
+
+    document.getElementById('canvas').addEventListener('click', () => {
+      selectNode(null);
+    });
+
+    // Drag and drop
+    document.querySelectorAll('.node-template').forEach(template => {
+      template.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('node-type', template.dataset.type);
+      });
+    });
+
+    nodesContainer.addEventListener('dragover', (e) => e.preventDefault());
+
+    nodesContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const type = e.dataTransfer.getData('node-type');
+      if (type) {
+        const rect = nodesContainer.getBoundingClientRect();
+        createNode(type, e.clientX - rect.left - 80, e.clientY - rect.top - 20);
+        updatePreview();
+      }
+    });
+
+    // ============================================
+    // Initialize
+    // ============================================
+
+    function init() {
+      // Create demo nodes
+      const circleNode = createNode('circle', 80, 80);
+      const numberNode = createNode('number', 80, 280);
+      const noiseNode = createNode('noise-displace', 300, 120);
+      const outputNode = createNode('output', 520, 160);
+
+      // Connect circle -> noise -> output
+      state.connections.push({
+        fromNode: circleNode.id,
+        fromPort: 0,
+        toNode: noiseNode.id,
+        toPort: 'input:0',
+        dataType: DataType.PATHS,
+      });
+
+      state.connections.push({
+        fromNode: noiseNode.id,
+        fromPort: 0,
+        toNode: outputNode.id,
+        toPort: 'input:0',
+        dataType: DataType.PATHS,
+      });
+
+      // Connect number to circle radius
+      state.connections.push({
+        fromNode: numberNode.id,
+        fromPort: 0,
+        toNode: circleNode.id,
+        toPort: 'param:radius',
+        dataType: DataType.NUMBER,
+      });
+
+      renderConnections();
+      updatePreview();
+    }
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      renderConnections();
+      updatePreview();
+    });
+
+    init();
+  </script>
+</body>
+</html>
