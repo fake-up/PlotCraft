@@ -1,5 +1,6 @@
 import type { ModuleDefinition, Path, Point } from '../../types';
 import { noise2D, distance } from '../../engine/geometry';
+import { createSeededRng } from '../../engine/rng';
 
 export const duplicateModifier: ModuleDefinition = {
   id: 'duplicate',
@@ -18,6 +19,8 @@ export const duplicateModifier: ModuleDefinition = {
         { value: 'linear', label: 'Linear' },
         { value: 'grid', label: 'Grid' },
         { value: 'circular', label: 'Circular' },
+        { value: 'random', label: 'Random' },
+        { value: 'radial', label: 'Radial' },
         { value: 'along-path', label: 'Along Path' },
       ],
     },
@@ -209,6 +212,73 @@ export const duplicateModifier: ModuleDefinition = {
       max: 200,
       step: 1,
       showWhen: { param: 'distributionMode', value: 'along-path' },
+    },
+
+    // Random mode
+    randomCopies: {
+      type: 'number',
+      label: 'Copies',
+      default: 5,
+      min: 1,
+      max: 50,
+      step: 1,
+      showWhen: { param: 'distributionMode', value: 'random' },
+    },
+    randomSpreadX: {
+      type: 'number',
+      label: 'Random Spread X (mm)',
+      default: 50,
+      min: 0,
+      max: 200,
+      step: 1,
+      showWhen: { param: 'distributionMode', value: 'random' },
+    },
+    randomSpreadY: {
+      type: 'number',
+      label: 'Random Spread Y (mm)',
+      default: 50,
+      min: 0,
+      max: 200,
+      step: 1,
+      showWhen: { param: 'distributionMode', value: 'random' },
+    },
+    randomSeed: {
+      type: 'number',
+      label: 'Random Seed',
+      default: 12345,
+      min: 0,
+      max: 99999,
+      step: 1,
+      showWhen: { param: 'distributionMode', value: 'random' },
+    },
+
+    // Radial mode
+    radialCount: {
+      type: 'number',
+      label: 'Copies',
+      default: 6,
+      min: 1,
+      max: 50,
+      step: 1,
+      showWhen: { param: 'distributionMode', value: 'radial' },
+    },
+    radialRadius: {
+      type: 'number',
+      label: 'Radial Radius (mm)',
+      default: 30,
+      min: 1,
+      max: 500,
+      step: 1,
+      showWhen: { param: 'distributionMode', value: 'radial' },
+    },
+    radialAngleOffset: {
+      type: 'number',
+      label: 'Angle Offset (°)',
+      default: 0,
+      min: 0,
+      max: 360,
+      step: 5,
+      showWhen: { param: 'distributionMode', value: 'radial' },
     },
 
     // === ROTATION RAMPING ===
@@ -472,6 +542,17 @@ export const duplicateModifier: ModuleDefinition = {
     const pathSpacing = (params.pathSpacing as string) ?? 'even';
     const pathSpacingDistance = (params.pathSpacingDistance as number) ?? 20;
 
+    // Random mode params
+    const randomCopies = (params.randomCopies as number) ?? 5;
+    const randomSpreadX = (params.randomSpreadX as number) ?? 50;
+    const randomSpreadY = (params.randomSpreadY as number) ?? 50;
+    const randomSeed = (params.randomSeed as number) ?? 12345;
+
+    // Radial mode params
+    const radialCount = (params.radialCount as number) ?? 6;
+    const radialRadius = (params.radialRadius as number) ?? 30;
+    const radialAngleOffset = ((params.radialAngleOffset as number) ?? 0) * Math.PI / 180;
+
     // Get guide path from additional inputs
     const guidePathLayers = ctx.inputs?.guidePath;
     const guidePath = guidePathLayers?.[0]?.paths?.[0] ?? null;
@@ -535,6 +616,8 @@ export const duplicateModifier: ModuleDefinition = {
         circleRadius, circleCount, circleStartAngle, circleEndAngle,
         circleCX, circleCY, orientToCircle,
         pathCopies, alignToPath, pathStartOffset, pathEndOffset, pathSpacing, pathSpacingDistance, guidePath,
+        randomCopies, randomSpreadX, randomSpreadY, randomSeed,
+        radialCount, radialRadius, radialAngleOffset,
         width, height,
       }
     );
@@ -668,6 +751,15 @@ interface DistributionParams {
   pathSpacing: string;
   pathSpacingDistance: number;
   guidePath: Path | null;
+  // Random params
+  randomCopies: number;
+  randomSpreadX: number;
+  randomSpreadY: number;
+  randomSeed: number;
+  // Radial params
+  radialCount: number;
+  radialRadius: number;
+  radialAngleOffset: number;
   width: number;
   height: number;
 }
@@ -727,6 +819,28 @@ function generateCopyConfigs(mode: string, p: DistributionParams): CopyConfig[] 
           x: posX,
           y: posY,
           orientAngle: p.orientToCircle ? angle + Math.PI / 2 : 0, // Face outward (perpendicular to radius)
+        });
+      }
+      break;
+    }
+
+    case 'random': {
+      const rng = createSeededRng(p.randomSeed);
+      for (let i = 0; i < p.randomCopies; i++) {
+        configs.push({
+          x: (rng() - 0.5) * p.randomSpreadX,
+          y: (rng() - 0.5) * p.randomSpreadY,
+        });
+      }
+      break;
+    }
+
+    case 'radial': {
+      for (let i = 0; i < p.radialCount; i++) {
+        const angle = p.radialAngleOffset + (i / p.radialCount) * Math.PI * 2;
+        configs.push({
+          x: Math.cos(angle) * p.radialRadius,
+          y: Math.sin(angle) * p.radialRadius,
         });
       }
       break;

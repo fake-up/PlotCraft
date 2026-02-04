@@ -543,6 +543,45 @@ export function PropertiesPanel() {
             </div>
           );
 
+        case 'file': {
+          const fileName = typeof value === 'string' && value.length > 0
+            ? '✓ File loaded'
+            : 'No file selected';
+          return (
+            <div key={param.name} className="space-y-1">
+              <label className="text-xs text-gray-500">{param.label}</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.svg';
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const content = ev.target?.result as string;
+                          if (content) {
+                            handleParamChange(param.name, content);
+                          }
+                        };
+                        reader.readAsText(file);
+                      }
+                    };
+                    input.click();
+                  }}
+                  className="px-3 py-1.5 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  Choose File
+                </button>
+                <span className="text-xs text-gray-400 truncate flex-1">{fileName}</span>
+              </div>
+            </div>
+          );
+        }
+
         default:
           return null;
       }

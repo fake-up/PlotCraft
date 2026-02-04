@@ -13,14 +13,13 @@ export const arcGenerator: ModuleDefinition = {
     segments: { type: 'number', label: 'Segments', default: 64, min: 8, max: 360, step: 1 },
     closePath: { type: 'boolean', label: 'Close Path (Pie Slice)', default: false },
     arcCount: { type: 'number', label: 'Arc Count', default: 1, min: 1, max: 50, step: 1 },
-    radiusStep: {
+    lineSpacing: {
       type: 'number',
-      label: 'Radius Step',
-      default: 10,
-      min: 1,
-      max: 100,
-      step: 1,
-      showWhen: { param: 'arcCount', value: 1 }, // Show when NOT 1, but we can't do that, so show always
+      label: 'Line Spacing (mm)',
+      default: 5,
+      min: 0.5,
+      max: 50,
+      step: 0.5,
     },
   },
   execute: (params, _input, ctx) => {
@@ -32,7 +31,7 @@ export const arcGenerator: ModuleDefinition = {
     const segments = (params.segments as number) ?? 64;
     const closePath = (params.closePath as boolean) ?? false;
     const arcCount = (params.arcCount as number) ?? 1;
-    const radiusStep = (params.radiusStep as number) ?? 10;
+    const lineSpacing = (params.lineSpacing as number) ?? 5;
 
     const { canvas } = ctx;
 
@@ -47,7 +46,7 @@ export const arcGenerator: ModuleDefinition = {
     const paths: Path[] = [];
 
     for (let a = 0; a < arcCount; a++) {
-      const radius = baseRadius + a * radiusStep;
+      const radius = baseRadius + a * lineSpacing;
       const points: Point[] = [];
 
       // If closing path, start from center

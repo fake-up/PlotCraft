@@ -11,7 +11,7 @@ function convertParameter(
     name,
     label: config.label,
     default: config.default,
-    type: config.type as 'number' | 'select' | 'boolean',
+    type: config.type as 'number' | 'select' | 'boolean' | 'file',
   };
 
   if (config.type === 'number') {

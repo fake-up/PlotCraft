@@ -1,9 +1,13 @@
 import type { ModuleDefinition, Layer, Path, Point } from '../../types';
+import { STAMP_PARAMETERS, getStampCenter, getStampParams, getStampRotation, placeStamp } from '../../engine/stamp';
 
 export const scatterPointsGenerator: ModuleDefinition = {
   id: 'scatterPoints',
   name: 'Scatter Points',
   type: 'generator',
+  additionalInputs: [
+    { name: 'stamp', type: 'paths', optional: true },
+  ],
   parameters: {
     count: { type: 'number', label: 'Point Count', default: 500, min: 10, max: 5000, step: 10 },
     region: {
@@ -34,6 +38,7 @@ export const scatterPointsGenerator: ModuleDefinition = {
       ],
     },
     falloffStrength: { type: 'number', label: 'Falloff Strength', default: 50, min: 0, max: 100, step: 5 },
+    ...STAMP_PARAMETERS,
   },
   execute: (params, _input, ctx) => {
     const count = (params.count as number) ?? 500;
@@ -47,6 +52,12 @@ export const scatterPointsGenerator: ModuleDefinition = {
     const falloffStrength = ((params.falloffStrength as number) ?? 50) / 100;
 
     const { rng, canvas } = ctx;
+
+    // Check for stamp input
+    const stampLayers = ctx.inputs?.stamp;
+    const hasStamp = stampLayers && stampLayers.length > 0 && stampLayers.some(l => l.paths.length > 0);
+    const stampCenter = hasStamp ? getStampCenter(stampLayers) : null;
+    const stamp = hasStamp ? getStampParams(params) : null;
 
     // Calculate center position in canvas coords
     const cx = (centerX / 100) * canvas.width;
@@ -97,35 +108,45 @@ export const scatterPointsGenerator: ModuleDefinition = {
             // Sparser at center, denser at edges
             keepProbability = distFromCenter * falloffStrength + (1 - falloffStrength);
             break;
-          case 'top-down':
+          case 'top-down': {
             // Denser at top, sparser at bottom
             const normTop = (normY + 1) / 2; // 0 at top, 1 at bottom
             keepProbability = 1 - normTop * falloffStrength;
             break;
-          case 'radial-noise':
+          }
+          case 'radial-noise': {
             // Use noise-like variation based on angle
             const angle = Math.atan2(localY, localX);
             const noiseVal = Math.sin(angle * 7) * 0.5 + 0.5;
             keepProbability = noiseVal * falloffStrength + (1 - falloffStrength);
             break;
+          }
         }
       }
 
       if (rng() > keepProbability) continue;
 
-      // Create dot at this position
+      // Position on canvas
       const px = cx + localX;
       const py = cy + localY;
 
-      const points: Point[] = [];
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        points.push({
-          x: px + Math.cos(angle) * radius,
-          y: py + Math.sin(angle) * radius,
-        });
+      if (hasStamp && stampCenter && stamp) {
+        // Place stamp at this position
+        const rotation = getStampRotation(stamp.stampRotation, rng, stamp.stampRandomRotation);
+        const stampPaths = placeStamp(stampLayers, stampCenter, px, py, stamp.stampScale, rotation);
+        paths.push(...stampPaths);
+      } else {
+        // Create default dot at this position
+        const points: Point[] = [];
+        for (let i = 0; i <= segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          points.push({
+            x: px + Math.cos(angle) * radius,
+            y: py + Math.sin(angle) * radius,
+          });
+        }
+        paths.push({ points, closed: true });
       }
-      paths.push({ points, closed: true });
       generated++;
     }
 

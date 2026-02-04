@@ -17,6 +17,9 @@ import { arcGenerator } from './generators/arc';
 import { horizontalLinesGenerator } from './generators/horizontalLines';
 import { particleSprayGenerator } from './generators/particleSpray';
 import { truchetTilesGenerator } from './generators/truchetTiles';
+import { crossGridGenerator } from './generators/crossGrid';
+import { importSvgGenerator } from './generators/importSvg';
+import { dashColumnsGenerator } from './generators/dashColumns';
 
 // Modifiers
 import { noiseDisplaceModifier } from './modifiers/noiseDisplace';
@@ -33,6 +36,7 @@ import { subdivideModifier } from './modifiers/subdivide';
 import { twistModifier } from './modifiers/twist';
 import { dashModifier } from './modifiers/dash';
 import { attractorModifier } from './modifiers/attractor';
+import { randomizeModifier } from './modifiers/randomize';
 
 class ModuleRegistry {
   private modules: Map<string, ModuleDefinition> = new Map();
@@ -77,6 +81,9 @@ moduleRegistry.register(scatterPointsGenerator);
 moduleRegistry.register(arcGenerator);
 moduleRegistry.register(particleSprayGenerator);
 moduleRegistry.register(truchetTilesGenerator);
+moduleRegistry.register(crossGridGenerator);
+moduleRegistry.register(importSvgGenerator);
+moduleRegistry.register(dashColumnsGenerator);
 
 // Register all modifiers
 moduleRegistry.register(noiseDisplaceModifier);
@@ -93,3 +100,4 @@ moduleRegistry.register(subdivideModifier);
 moduleRegistry.register(twistModifier);
 moduleRegistry.register(dashModifier);
 moduleRegistry.register(attractorModifier);
+moduleRegistry.register(randomizeModifier);

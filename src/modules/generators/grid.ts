@@ -1,10 +1,14 @@
 import type { ModuleDefinition, Layer, Path, Point } from '../../types';
 import { createLinePath } from '../../engine/geometry';
+import { STAMP_PARAMETERS, getStampCenter, getStampParams, getStampRotation, placeStamp } from '../../engine/stamp';
 
 export const gridGenerator: ModuleDefinition = {
   id: 'grid',
   name: 'Grid',
   type: 'generator',
+  additionalInputs: [
+    { name: 'stamp', type: 'paths', optional: true },
+  ],
   parameters: {
     layerId: {
       type: 'select',
@@ -31,6 +35,7 @@ export const gridGenerator: ModuleDefinition = {
     centered: { type: 'boolean', label: 'Center on Canvas', default: true },
     positionX: { type: 'number', label: 'Position X (%)', default: 50, min: 0, max: 100, step: 1, showWhen: { param: 'centered', value: false } },
     positionY: { type: 'number', label: 'Position Y (%)', default: 50, min: 0, max: 100, step: 1, showWhen: { param: 'centered', value: false } },
+    ...STAMP_PARAMETERS,
   },
   execute: (params, _input, ctx) => {
     // Use defaults for any missing params (handles legacy module instances)
@@ -45,6 +50,13 @@ export const gridGenerator: ModuleDefinition = {
     const positionY = (params.positionY as number) ?? 50;
 
     const { width, height } = ctx.canvas;
+    const rng = ctx.rng;
+
+    // Check for stamp input
+    const stampLayers = ctx.inputs?.stamp;
+    const hasStamp = stampLayers && stampLayers.length > 0 && stampLayers.some(l => l.paths.length > 0);
+    const stampCenter = hasStamp ? getStampCenter(stampLayers) : null;
+    const stamp = hasStamp ? getStampParams(params) : null;
 
     // Calculate offset to position the grid
     let offsetX: number;
@@ -62,7 +74,18 @@ export const gridGenerator: ModuleDefinition = {
 
     const paths: Path[] = [];
 
-    if (style === 'lines') {
+    if (hasStamp && stampCenter && stamp) {
+      // Stamp mode: place stamp at each grid intersection
+      for (let r = 0; r <= rows; r++) {
+        for (let c = 0; c <= cols; c++) {
+          const x = offsetX + (c / cols) * gridWidth;
+          const y = offsetY + (r / rows) * gridHeight;
+          const rotation = getStampRotation(stamp.stampRotation, rng, stamp.stampRandomRotation);
+          const stampPaths = placeStamp(stampLayers, stampCenter, x, y, stamp.stampScale, rotation);
+          paths.push(...stampPaths);
+        }
+      }
+    } else if (style === 'lines') {
       // Horizontal lines
       for (let r = 0; r <= rows; r++) {
         const y = offsetY + (r / rows) * gridHeight;

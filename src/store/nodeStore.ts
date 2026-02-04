@@ -29,7 +29,7 @@ export interface NodeDefinition {
 
 export interface ParameterDefinition {
   name: string;
-  type: 'number' | 'select' | 'boolean' | 'vector' | 'button';
+  type: 'number' | 'select' | 'boolean' | 'vector' | 'button' | 'file';
   label: string;
   default: unknown;
   min?: number;
@@ -65,6 +65,12 @@ export interface NodeGroup {
   name: string;
   color: string;
   nodeIds: string[];
+}
+
+// Clipboard data for copy/paste
+export interface ClipboardData {
+  nodes: GraphNode[];
+  connections: Connection[];
 }
 
 // Project file format
@@ -165,6 +171,11 @@ export interface NodeGraphState {
   toast: { message: string; visible: boolean };
   showToast: (message: string) => void;
   hideToast: () => void;
+
+  // Clipboard
+  clipboard: ClipboardData | null;
+  copyNodes: (nodeIds: string[]) => void;
+  pasteNodes: () => string[];
 
   // Preview
   previewStrokeWidth: number;
@@ -625,6 +636,80 @@ export const useNodeStore = create<NodeGraphState>((set, get) => ({
     setTimeout(() => get().hideToast(), 2000);
   },
   hideToast: () => set({ toast: { message: '', visible: false } }),
+
+  // Clipboard
+  clipboard: null,
+
+  copyNodes: (nodeIds) => {
+    const state = get();
+    const nodeIdSet = new Set(nodeIds);
+    const copiedNodes = state.nodes.filter((n) => nodeIdSet.has(n.id));
+    if (copiedNodes.length === 0) return;
+
+    // Copy connections that exist entirely between the copied nodes
+    const copiedConnections = state.connections.filter(
+      (c) => nodeIdSet.has(c.fromNode) && nodeIdSet.has(c.toNode)
+    );
+
+    set({
+      clipboard: {
+        nodes: copiedNodes.map((n) => ({ ...n, params: { ...n.params } })),
+        connections: copiedConnections.map((c) => ({ ...c })),
+      },
+    });
+  },
+
+  pasteNodes: () => {
+    const state = get();
+    if (!state.clipboard || state.clipboard.nodes.length === 0) return [];
+
+    const PASTE_OFFSET = 20;
+
+    // Build old-id -> new-id mapping
+    const idMap = new Map<string, string>();
+    for (const node of state.clipboard.nodes) {
+      idMap.set(node.id, generateNodeId());
+    }
+
+    // Create new nodes with new IDs and offset positions
+    const newNodes: GraphNode[] = state.clipboard.nodes.map((n) => ({
+      ...n,
+      id: idMap.get(n.id)!,
+      x: n.x + PASTE_OFFSET,
+      y: n.y + PASTE_OFFSET,
+      params: { ...n.params },
+      promotedParams: n.promotedParams ? [...n.promotedParams] : undefined,
+    }));
+
+    // Recreate internal connections with remapped IDs
+    const newConnections: Connection[] = state.clipboard.connections.map((c) => ({
+      id: generateConnectionId(),
+      fromNode: idMap.get(c.fromNode)!,
+      fromPort: c.fromPort,
+      toNode: idMap.get(c.toNode)!,
+      toPort: c.toPort,
+      dataType: c.dataType,
+    }));
+
+    const newNodeIds = newNodes.map((n) => n.id);
+
+    set((s) => ({
+      nodes: [...s.nodes, ...newNodes],
+      connections: [...s.connections, ...newConnections],
+      selectedNodeIds: newNodeIds,
+    }));
+
+    // Update clipboard positions so next paste offsets further
+    set((s) => ({
+      clipboard: s.clipboard ? {
+        ...s.clipboard,
+        nodes: s.clipboard.nodes.map((n) => ({ ...n, x: n.x + PASTE_OFFSET, y: n.y + PASTE_OFFSET })),
+      } : null,
+    }));
+
+    get().triggerExecution();
+    return newNodeIds;
+  },
 
   // Preview
   previewStrokeWidth: 0.3,

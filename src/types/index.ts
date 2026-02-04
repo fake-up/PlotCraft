@@ -49,7 +49,7 @@ export interface CanvasSettings {
 }
 
 export interface ParameterDef {
-  type: 'number' | 'select' | 'boolean';
+  type: 'number' | 'select' | 'boolean' | 'file';
   label: string;
   default: number | string | boolean;
   min?: number;
@@ -58,6 +58,7 @@ export interface ParameterDef {
   options?: { value: string; label: string }[];
   showWhen?: { param: string; value: unknown };
   dynamicOptions?: string; // For dynamic option lists like 'plotLayers'
+  accept?: string; // File type filter for 'file' type (e.g., '.svg')
 }
 
 // Alias for compatibility

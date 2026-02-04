@@ -24,6 +24,8 @@ export function NodeCanvas() {
   const draggingConnection = useNodeStore((s) => s.draggingConnection);
   const setDraggingConnection = useNodeStore((s) => s.setDraggingConnection);
   const createGroup = useNodeStore((s) => s.createGroup);
+  const copyNodes = useNodeStore((s) => s.copyNodes);
+  const pasteNodes = useNodeStore((s) => s.pasteNodes);
   const showToast = useNodeStore((s) => s.showToast);
 
   const [isPanning, setIsPanning] = useState(false);
@@ -227,6 +229,35 @@ export function NodeCanvas() {
         createGroup(selectedNodeIds);
         showToast(`Grouped ${selectedNodeIds.length} nodes`);
       }
+      // Cmd+C / Ctrl+C to copy selected nodes
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedNodeIds.length > 0) {
+        if (document.activeElement?.tagName !== 'INPUT') {
+          e.preventDefault();
+          copyNodes(selectedNodeIds);
+          showToast(`Copied ${selectedNodeIds.length} node${selectedNodeIds.length > 1 ? 's' : ''}`);
+        }
+      }
+      // Cmd+V / Ctrl+V to paste nodes
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        if (document.activeElement?.tagName !== 'INPUT') {
+          e.preventDefault();
+          const pasted = pasteNodes();
+          if (pasted.length > 0) {
+            showToast(`Pasted ${pasted.length} node${pasted.length > 1 ? 's' : ''}`);
+          }
+        }
+      }
+      // Cmd+D / Ctrl+D to duplicate selected nodes
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedNodeIds.length > 0) {
+        if (document.activeElement?.tagName !== 'INPUT') {
+          e.preventDefault();
+          copyNodes(selectedNodeIds);
+          const pasted = pasteNodes();
+          if (pasted.length > 0) {
+            showToast(`Duplicated ${pasted.length} node${pasted.length > 1 ? 's' : ''}`);
+          }
+        }
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -242,7 +273,7 @@ export function NodeCanvas() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedNodeIds, removeNodes, deselectAll, setDraggingConnection, createGroup, showToast]);
+  }, [selectedNodeIds, removeNodes, deselectAll, setDraggingConnection, createGroup, copyNodes, pasteNodes, showToast]);
 
   // Wheel listener
   useEffect(() => {
